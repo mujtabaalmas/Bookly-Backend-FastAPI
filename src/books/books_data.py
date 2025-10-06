@@ -1,0 +1,108 @@
+# just for testing and practicing only 
+books = [
+
+    {
+        "id": 1 ,
+        "title": "Think Python",
+        "author": "Allen B. Downey",
+        "publisher": "O'Reilly Media",
+        "published_date": "2021-01-01",
+        "page_count": 1234,
+        "language": "English",
+    },
+
+    {
+        "id": 2 ,
+        "title": "GAME OF THRONES",
+        "author": "ROBERT DOWNY JR",
+        "publisher": "O'Reilly Media",
+        "published_date": "2018-01-01",
+        "page_count": 1000,
+        "language": "English",
+    },
+        {
+        "id": 3 ,
+        "title": "GAME OF THRONES VOL 2",
+        "author": "ROBERT DOWNY JR",
+        "publisher": "O'Reilly Media",
+        "published_date": "2020-01-01",
+        "page_count": 3220,
+        "language": "English",
+    },
+        {
+        "id": 4 ,
+        "title": "C ++",
+        "author": "Allen B. Downey",
+        "publisher": "O'Reilly Media",
+        "published_date": "2021-01-01",
+        "page_count": 1234,
+        "language": "English",
+    },
+        {
+        "id": 5 ,
+        "title": "Rust",
+        "author": "Allen B. Downey",
+        "publisher": "O'Reilly Media",
+        "published_date": "2021-01-01",
+        "page_count": 1234,
+        "language": "English",
+    },
+        {
+        "id": 6 ,
+        "title": "JAVA",
+        "author": "Allen B. Downey",
+        "publisher": "O'Reilly Media",
+        "published_date": "2021-01-01",
+        "page_count": 1234,
+        "language": "English",
+    },
+        {
+        "id": 7 ,
+        "title": "React JS",
+        "author": "Allen B. Downey",
+        "publisher": "O'Reilly Media",
+        "published_date": "2021-01-01",
+        "page_count": 1234,
+        "language": "English",
+    },
+        {
+        "id": 8 ,
+        "title": "Python (Programming language)",
+        "author": "Guido Van Rossum",
+        "publisher": "Python INC",
+        "published_date": "1998-01-01",
+        "page_count": 3007,
+        "language": "English",
+    },
+        {
+        "id": 9 ,
+        "title": "C",
+        "author": "Allen B. Downey",
+        "publisher": "O'Reilly Media",
+        "published_date": "2021-01-01",
+        "page_count": 1234,
+        "language": "English",
+    },
+        {
+        "id": 10 ,
+        "title": "C#",
+        "author": "Allen B. Downey",
+        "publisher": "O'Reilly Media",
+        "published_date": "2021-01-01",
+        "page_count": 1234,
+        "language": "English",
+    },
+        {
+        "id": 11 ,
+        "title": "Meow",
+        "author": "Allen B. Downey",
+        "publisher": "O'Reilly Media",
+        "published_date": "2021-01-01",
+        "page_count": 1234,
+        "language": "English",
+    },
+
+
+]
+
+# print(books[0].keys())
