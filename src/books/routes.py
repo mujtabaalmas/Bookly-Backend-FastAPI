@@ -6,11 +6,11 @@ from typing import Optional, List
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.books.service import BookService
 from src.db.main import get_session
-from src.auth.dependencies import AccesTokenBearer
+from src.auth.dependencies import AccessTokenBearer
 
 book_router = APIRouter()
 book_service = BookService()
-access_token_bearer = AccesTokenBearer()
+access_token_bearer = AccessTokenBearer()
 
 # ROUTER TO GET SELECTED HEADERS FROM API
 # @book_router.get("/get_headers", status_code=status.HTTP_200_OK)
