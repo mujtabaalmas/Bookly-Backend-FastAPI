@@ -6,12 +6,12 @@
 
 # from src.config import Config
 
-# engine = AsyncEngine( 
+# engine = AsyncEngine(
 #     create_engine(
 #     url=Config.DATABASE_URL,
 #     echo=True
 # ))
- 
+
 # async def init_db():
 #     async with engine.begin() as conn:
 #         # statement = text("SELECT 'hello';")
@@ -43,15 +43,13 @@ from src.config import Config
 #  Create proper async engine
 engine = create_async_engine(
     Config.DATABASE_URL,  # e.g., "postgresql+asyncpg://user:pass@localhost/dbname"
-    echo=True
+    echo=True,
 )
 
 
 #  Create async session factory
 SessionLocal = async_sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False
+    bind=engine, class_=AsyncSession, expire_on_commit=False
 )
 
 
