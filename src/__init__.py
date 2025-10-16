@@ -21,7 +21,6 @@ app = FastAPI(
     title="Brookly App",
     description="A Rest Api for book review web service",
     version=version,
-    lifespan=life_span,
 )
 
 app.include_router(book_router, prefix=f"/{api}/{version}/books", tags=["books"])
