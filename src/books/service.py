@@ -1,7 +1,7 @@
 from sqlmodel.ext.asyncio.session import AsyncSession
 from .schemas import BookCreateModel, BookUpdateModel
 from sqlmodel import select, desc
-from .models import BookModel
+from src.db.models import BookModel
 from datetime import datetime
 from fastapi import HTTPException, status
 
@@ -14,6 +14,17 @@ class BookService:
 
         return result.all()
 
+    async def get_user_books(self, user_uid: str, session: AsyncSession):
+
+        statement = (
+            select(BookModel)
+            .where(BookModel.user_uid == user_uid)
+            .order_by(desc(BookModel.created_at))
+        )
+        result = await session.exec(statement)
+
+        return result.all()
+
     async def get_book(self, book_uid: str, session: AsyncSession):
 
         statement = select(BookModel).where(book_uid == BookModel.uid)
@@ -22,7 +33,9 @@ class BookService:
         book = result.first()
         return book if book is not None else None
 
-    async def create_book(self, book_data: BookCreateModel, session: AsyncSession):
+    async def create_book(
+        self, book_data: BookCreateModel, user_uid: str, session: AsyncSession
+    ):
 
         title = book_data.title.strip().upper()
         author = book_data.author.strip().upper()
@@ -48,6 +61,8 @@ class BookService:
             page_count=book_data.page_count,
             published_date=book_data.published_date,
         )
+
+        new_book.user_uid = user_uid
 
         session.add(new_book)
         await session.commit()

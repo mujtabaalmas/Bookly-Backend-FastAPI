@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status, Header, HTTPException, Depends
 
 # from src.books.books_data import books
-from src.books.schemas import BookModel, BookUpdateModel, BookCreateModel
+from .schemas import BookModel, BookUpdateModel, BookCreateModel, BookDetailModel
 from typing import Optional, List
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.books.service import BookService
@@ -39,25 +39,47 @@ role_checker = Depends(RoleChecker(["admin", "user"]))
 @book_router.get("/", response_model=List[BookModel], dependencies=[role_checker])
 async def get_all_books(
     session: AsyncSession = Depends(get_session),
-    user_details=Depends(access_token_bearer),
+    token_details: dict = Depends(access_token_bearer),
 ):
-    # print("user detail that currently accessing resourse: ",user_details)
+    # print("user detail that currently accessing resourse: ",token_details: dict)
     books = await book_service.get_all_books(session)
+    return books
+
+
+# USER BOOK DETAILS
+@book_router.get(
+    "/user/{user_uid}", response_model=List[BookModel], dependencies=[role_checker]
+)
+async def get_user_book_submission(
+    user_uid: str,
+    session: AsyncSession = Depends(get_session),
+    token_details: dict = Depends(access_token_bearer),
+):
+
+    books = await book_service.get_user_books(user_uid, session)
+    if not books:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(f"books not found for user {user_uid} !!!"),
+        )
     return books
 
 
 # ROUTER TO CREATE BOOKS
 @book_router.post(
-    "/create", status_code=status.HTTP_201_CREATED, response_model=BookModel , dependencies=[role_checker]
+    "/create",
+    status_code=status.HTTP_201_CREATED,
+    response_model=BookModel,
+    dependencies=[role_checker],
 )
 async def create_books(
     book_data: BookCreateModel,
     session: AsyncSession = Depends(get_session),
-    user_details=Depends(access_token_bearer),
+    token_details: dict = Depends(access_token_bearer),
 ) -> dict:
     """Router to create new book instance"""
-
-    new_book = await book_service.create_book(book_data, session)
+    user_id = token_details.get("user")["user_uid"]
+    new_book = await book_service.create_book(book_data, user_id, session)
     if not new_book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=(f"book not created !!!")
@@ -69,11 +91,11 @@ async def create_books(
 
 
 # ROUTER TO GET BOOK BY ID
-@book_router.get("/{book_uid}", response_model=BookModel, dependencies=[role_checker])
+@book_router.get("/{book_uid}", response_model=BookDetailModel, dependencies=[role_checker])
 async def get_book_by_id(
     book_uid: str,
     session: AsyncSession = Depends(get_session),
-    user_details=Depends(access_token_bearer),
+    token_details: dict = Depends(access_token_bearer),
 ) -> dict:
     """Router to get Book by books"""
     book = await book_service.get_book(book_uid, session)
@@ -86,12 +108,14 @@ async def get_book_by_id(
 
 
 # ROUTER TO UPDATE BOOK
-@book_router.patch("/update/{book_uid}", response_model=BookModel, dependencies=[role_checker])
+@book_router.patch(
+    "/update/{book_uid}", response_model=BookModel, dependencies=[role_checker]
+)
 async def update_book(
     book_uid: str,
     book_update_data: BookUpdateModel,
     session: AsyncSession = Depends(get_session),
-    user_details=Depends(access_token_bearer),
+    token_details: dict = Depends(access_token_bearer),
 ):
     """ROUTER TO UPDATE EXISTING BOOK BY BOOK ID"""
 
@@ -116,11 +140,15 @@ async def update_book(
 
 
 # ROUTER TO DELETE BOOK BY ID
-@book_router.delete("/delete/{book_uid}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[role_checker])
+@book_router.delete(
+    "/delete/{book_uid}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[role_checker],
+)
 async def delete_book(
     book_uid: str,
     session: AsyncSession = Depends(get_session),
-    user_details=Depends(access_token_bearer),
+    token_details: dict = Depends(access_token_bearer),
 ):
     """
     ROUTER TO DELETE EXISTING BOOK BY BOOK ID

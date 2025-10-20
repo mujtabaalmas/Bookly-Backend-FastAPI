@@ -6,8 +6,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from src.auth.models import User
-from src.books.models import BookModel
+from src.db.models import User
+from src.db.models import BookModel
 from sqlmodel import SQLModel
 from src.config import Config
 
