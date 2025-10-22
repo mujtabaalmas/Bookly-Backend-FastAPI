@@ -32,10 +32,20 @@ class User(SQLModel, table=True):
         sa_column=Column(pg.TIMESTAMP(timezone=True), default=datetime.now())
     )
     books: List["BookModel"] = Relationship(
-        back_populates="user", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="user",
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "cascade": "all, delete-orphan",
+            "passive_deletes": True,
+        },
     )
     reviews: List["Review"] = Relationship(
-        back_populates="user", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="user",
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "cascade": "all, delete-orphan",
+            "passive_deletes": True,
+        },
     )
 
     def __repr__(self):
@@ -46,6 +56,7 @@ from sqlmodel import SQLModel, Field, Column, Relationship
 import sqlalchemy as pg
 from datetime import datetime, date
 from typing import Optional
+from sqlalchemy import ForeignKey
 import uuid
 
 
@@ -62,7 +73,13 @@ class BookModel(SQLModel, table=True):
     published_date: date
     page_count: int = Field(sa_column=Column(pg.INTEGER(), nullable=False))
     language: str = Field(sa_column=Column(pg.String(100), default="English"))
-    user_uid: Optional[uuid.UUID] = Field(default=None, foreign_key="users.uid")
+    user_uid: uuid.UUID = Field(
+        sa_column=Column(
+            pg.UUID(as_uuid=True),
+            ForeignKey("users.uid", ondelete="CASCADE"),  # ✅ ensure cascade from User → Books
+            nullable=False,
+        )
+    )
     created_at: datetime = Field(
         sa_column=Column(pg.TIMESTAMP(timezone=True), default=datetime.now())
     )
@@ -71,7 +88,12 @@ class BookModel(SQLModel, table=True):
     )
     user: Optional["User"] = Relationship(back_populates="books")
     reviews: List["Review"] = Relationship(
-        back_populates="books", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="books",
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "cascade": "all, delete-orphan",
+            "passive_deletes": True,
+        },
     )
 
     def __repr__(self):
@@ -84,10 +106,22 @@ class Review(SQLModel, table=True):
     uid: uuid.UUID = Field(
         sa_column=Column(pg.UUID, nullable=False, primary_key=True, default=uuid.uuid4)
     )
-    ratings: int = Field(lt=5)
+    ratings: int = Field(ge=1, le=5)
     review_text: str
-    user_uid: Optional[uuid.UUID] = Field(default=None, foreign_key="users.uid")
-    book_uid: Optional[uuid.UUID] = Field(default=None, foreign_key="books.uid")
+    user_uid: uuid.UUID = Field(
+        sa_column=Column(
+            pg.UUID(as_uuid=True),
+            ForeignKey("users.uid", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    book_uid: uuid.UUID = Field(
+        sa_column=Column(
+            pg.UUID(as_uuid=True),
+            ForeignKey("books.uid", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
     created_at: datetime = Field(
         sa_column=Column(pg.TIMESTAMP(timezone=True), default=datetime.now())
     )

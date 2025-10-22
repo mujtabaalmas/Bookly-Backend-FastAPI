@@ -3,6 +3,7 @@ from .schemas import UserCreateModel
 from .utils import generate_password_hash, verify_password
 from sqlmodel import select, desc
 from src.db.models import User
+from sqlalchemy.orm import selectinload
 from datetime import datetime
 
 
@@ -34,3 +35,20 @@ class UserService:
         await session.commit()
 
         return new_user
+
+    async def get_current_user_details(self, current_user: User, session: AsyncSession):
+        result = await session.exec(
+            select(User)
+            .where(User.uid == current_user.uid)
+            .options(
+                selectinload(User.books),
+                selectinload(User.reviews),
+            )
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+        else:
+            user.reviews = [r for r in user.reviews if r.book_uid is not None]
+
+            return user

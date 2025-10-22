@@ -6,7 +6,7 @@ import uuid
 
 class ReviewModel(BaseModel):
     uid: uuid.UUID
-    ratings: int = Field(lt=5)
+    ratings: int = Field(ge=1,le=5)
     review_text: str
     user_uid: Optional[uuid.UUID]
     book_uid: Optional[uuid.UUID]
@@ -15,5 +15,5 @@ class ReviewModel(BaseModel):
 
 
 class ReviewCreateModel(BaseModel):
-    ratings: int = Field(lt=5)
+    ratings: int = Field(ge=1,le=5)
     review_text: str
