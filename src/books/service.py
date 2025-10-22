@@ -4,7 +4,9 @@ from sqlmodel import select, desc
 from src.db.models import BookModel
 from datetime import datetime
 from fastapi import HTTPException, status
-
+from src.errors import (
+    BookNotFound
+)
 
 class BookService:
     async def get_all_books(self, session: AsyncSession):

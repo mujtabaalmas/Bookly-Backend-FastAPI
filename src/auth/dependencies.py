@@ -8,6 +8,21 @@ from src.db.main import get_session
 from .service import UserService
 from typing import List
 from src.db.models import User
+from src.errors import (
+    BooklyException,
+    InvalidToken,
+    RevokedToken,
+    AccessTokenRequired,
+    RefreshTokenRequired,
+    UserAlreadyExists,
+    InvalidCredentials,
+    InsufficientPermission,
+    BookNotFound,
+    TagNotFound,
+    TagAlreadyExists,
+    UserNotFound,
+    AccountNotVerified,
+)
 
 user_service = UserService()
 
@@ -20,34 +35,35 @@ class TokenBearer(HTTPBearer):
         credentialie = await super().__call__(request)
 
         if not credentialie or not credentialie.credentials:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Missing authentication token",
-            )
+            raise InvalidToken()
+            # raise HTTPException(
+            #     status_code=status.HTTP_401_UNAUTHORIZED,
+            #     detail="Missing authentication token",
+            # )
 
         token = credentialie.credentials
 
         try:
             token_data = decode_token(token)
         except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid or malformed token",
-            ) from e
+            raise InvalidToken()
+            # raise HTTPException(
+            #     status_code=status.HTTP_403_FORBIDDEN,
+            #     detail="Invalid or malformed token",
+            # ) from e
 
         if not self.token_valid(token):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Invalid or Expire Token"
-            )
+            raise InvalidToken()
 
         if await token_in_blocklist(token_data["jti"]):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "This token is invalid or has been revoked",
-                    "resolution": "Please get new token",
-                },
-            )
+            raise InvalidToken()
+            # raise HTTPException(
+            #     status_code=status.HTTP_403_FORBIDDEN,
+            #     detail={
+            #         "error": "This token is invalid or has been revoked",
+            #         "resolution": "Please get new token",
+            #     },
+            # )
 
         self.verify_token_data(token_data)
 
@@ -66,19 +82,21 @@ class TokenBearer(HTTPBearer):
 class AccessTokenBearer(TokenBearer):
     def verify_token_data(self, token_data: dict) -> None:
         if token_data and token_data["refresh"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Please Provide access token",
-            )
+            raise AccessTokenRequired
+            # raise HTTPException(
+            #     status_code=status.HTTP_403_FORBIDDEN,
+            #     detail="Please Provide access token",
+            # )
 
 
 class RefreshTokenBearer(TokenBearer):
     def verify_token_data(self, token_data: dict) -> None:
         if token_data and not token_data["refresh"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Please Provide a refresh token",
-            )
+            raise RefreshTokenRequired
+            # raise HTTPException(
+            #     status_code=status.HTTP_403_FORBIDDEN,
+            #     detail="Please Provide a refresh token",
+            # )
 
 
 async def get_current_user(
@@ -100,7 +118,8 @@ class RoleChecker:
         if current_user.role in self.allowed_roles:
             return True
 
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Resourse forbidden to Access , NOT AUTHORIZED",
-        )
+        raise InsufficientPermission()
+        # raise HTTPException(
+        #     status_code=status.HTTP_403_FORBIDDEN,
+        #     detail="Resourse forbidden to Access , NOT AUTHORIZED",
+        # )
