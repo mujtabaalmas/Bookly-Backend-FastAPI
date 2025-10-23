@@ -1,9 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from .schemas import UserCreateModel, UserModel, UserloginModel, UserBooksModel
+from .schemas import (
+    UserCreateModel,
+    UserModel,
+    UserloginModel,
+    UserBooksModel,
+    EmailModel,
+)
 from .service import UserService
 from src.db.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
-from .utils import create_access_token, decode_token, verify_password
+from .utils import (
+    create_access_token,
+    decode_token,
+    verify_password,
+    create_url_safe_token,
+    decode_url_safe_token,
+)
 from fastapi.responses import JSONResponse
 from datetime import timedelta, datetime
 from .dependencies import (
@@ -13,21 +25,15 @@ from .dependencies import (
     RoleChecker,
 )
 from src.db.redis import add_jti_to_blocklist
+from src.config import Config
+from src.db.main import get_session
 from src.errors import (
-    # BooklyException,
     InvalidToken,
-    # RevokedToken,
-    # AccessTokenRequired,
-    # RefreshTokenRequired,
     UserAlreadyExists,
     InvalidCredentials,
-    # InsufficientPermission,
-    # BookNotFound,
-    # TagNotFound,
-    # TagAlreadyExists,
     UserNotFound,
-    # AccountNotVerified,
 )
+from src.mail import mail, create_message, send_verification_email
 
 auth_router = APIRouter()
 user_service = UserService()
@@ -36,9 +42,19 @@ role_checker = RoleChecker(["admin", "user"])
 REFRESH_TOKEN_EXPIRY = 1
 
 
-@auth_router.post(
-    "/signup", response_model=UserModel, status_code=status.HTTP_201_CREATED
-)
+@auth_router.post("/send_mail")
+async def send_mail(emails: EmailModel):
+    emails = emails.addresses
+    html = """<h1>welcome to the app bookly</h1> 
+            <h2>Email sent from FastAPI API testing only</h2>"""
+    message = create_message(recipients=emails, subject="Welcome", body=html)
+
+    await mail.send_message(message)
+
+    return {"message": "Email sent successfully"}
+
+
+@auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def create_user_Account(
     user_data: UserCreateModel, session: AsyncSession = Depends(get_session)
 ):
@@ -48,14 +64,62 @@ async def create_user_Account(
 
     if User_exists:
         raise UserAlreadyExists()
-        # raise HTTPException(
-        #     status_code=status.HTTP_403_FORBIDDEN,
-        #     detail=(f"User Already Exists with this email !!!"),
-        # )
 
     new_user = await user_service.create_user(user_data, session)
+    token = create_url_safe_token({"email": email})
+    Link = f"http://{Config.DOMAIN}/api/v1/auth/verify/{token}"
 
-    return new_user
+    # Send templated email
+    await send_verification_email(
+        email=email, username=user_data.username, verify_link=Link
+    )
+
+    return {
+        "message": "Account Created Successfully! Check your email to verify your account.",
+        "user": new_user,
+    }
+
+    # Below is Simple sending text with link to email
+
+    # html_message = f"""
+    #     <h1>Please verify your email</h1>
+    #     <p>Click on this <a href="{Link}">Link</a> to verify your account</p>
+    # """
+    # message = create_message(
+    #     recipients=[email], subject="Verify Your Bookly Account", body=html_message
+    # )
+    # await mail.send_message(message)
+
+    # return {
+    #     "message": "Account Created Successfully! Check Email to verify your account",
+    #     "user": new_user,
+    # }
+
+    # return new_user
+
+
+@auth_router.get("/verify/{token}")
+async def verify_user_account(token: str, session: AsyncSession = Depends(get_session)):
+
+    token_data = decode_url_safe_token(token)
+    user_email = token_data.get("email")
+
+    if user_email:
+        user = await user_service.get_user_by_email(user_email, session)
+
+        if not user:
+            raise UserNotFound()
+        await user_service.update_user(user, {"is_verified": True}, session)
+
+        return JSONResponse(
+            content={"message": "Account Verified succesfully"},
+            status_code=status.HTTP_200_OK,
+        )
+
+    return JSONResponse(
+        content={"message": "something went wrong cannot verify your account"},
+        status_code=status.HTTP_502_BAD_GATEWAY,
+    )
 
 
 @auth_router.post("/login")
@@ -109,7 +173,7 @@ async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer(
     if datetime.fromtimestamp(expiry_timestamp) > datetime.now():
         new_acces_token = create_access_token(user_data=token_details["user"])
         return JSONResponse(content={"new_access_token": new_acces_token})
-    
+
     raise InvalidToken()
     # raise HTTPException(
     #     status_code=status.HTTP_400_BAD_REQUEST, detail="invalid or expired token"

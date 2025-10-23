@@ -36,3 +36,5 @@ class UserloginModel(BaseModel):
     password: str = Field(min_length=8)
 
 
+class EmailModel(BaseModel):
+    addresses : List[str]

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" style="font-family: Arial, sans-serif;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Account</title>
+    <style>
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            background: #ffffff;
+            margin: 40px auto;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #4f46e5;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .content {
+            padding: 30px;
+            line-height: 1.6;
+            text-align: center;
+        }
+        .content p {
+            font-size: 16px;
+            color: #555;
+        }
+        .verify-btn {
+            display: inline-block;
+            margin-top: 25px;
+            background-color: #4f46e5;
+            color: #fff !important;
+            text-decoration: none;
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+        .verify-btn:hover {
+            background-color: #4338ca;
+        }
+        .footer {
+            background-color: #f1f1f1;
+            color: #777;
+            text-align: center;
+            padding: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to Bookly!</h1>
+        </div>
+        <div class="content">
+            <p>Hi {{ username }},</p>
+            <p>Thank you for signing up on <strong>Bookly</strong>!  
+               Please confirm your email address by clicking the button below.</p>
+            <a href="{{ verify_link }}" class="verify-btn">Verify Email</a>
+            <p style="margin-top:20px;">If you didn’t create this account, you can safely ignore this email.</p>
+        </div>
+        <div class="footer">
+            <p>© {{ year }} Bookly. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
