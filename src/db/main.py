@@ -42,8 +42,7 @@ from src.config import Config
 
 #  Create proper async engine
 engine = create_async_engine(
-    Config.DATABASE_URL,  # e.g., "postgresql+asyncpg://user:pass@localhost/dbname"
-    echo=True,
+    Config.DATABASE_URL  # e.g., "postgresql+asyncpg://user:pass@localhost/dbname"
 )
 
 
