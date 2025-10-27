@@ -5,6 +5,8 @@ from .schemas import (
     UserloginModel,
     UserBooksModel,
     EmailModel,
+    PasswordResetRequestModel,
+    PasswordResetConfirmModel,
 )
 from .service import UserService
 from src.db.main import get_session
@@ -12,6 +14,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .utils import (
     create_access_token,
     decode_token,
+    generate_password_hash,
     verify_password,
     create_url_safe_token,
     decode_url_safe_token,
@@ -198,4 +201,71 @@ async def revoke_token(token_details: dict = Depends(AccessTokenBearer())):
 
     return JSONResponse(
         content={"message": "logged out succesfully"}, status_code=status.HTTP_200_OK
+    )
+
+
+@auth_router.post("/password-reset-request")
+async def password_reset_request(email_data: PasswordResetRequestModel):
+
+    email = email_data.email
+    token = create_url_safe_token({"email": email})
+    Link = f"http://{Config.DOMAIN}/api/v1/auth/password-reset-confirm/{token}"
+
+    html_message = f"""
+        <h1>Reset your password</h1>
+        <p>Click on this <a href="{Link}">Link</a> to Reset your Password</p>
+    """
+    message = create_message(
+        recipients=[email], subject="Reset Your Password", body=html_message
+    )
+
+    await mail.send_message(message)
+    return JSONResponse(
+        content={
+            "message": "Please check your email for password reset link",
+        },
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@auth_router.post("/password-reset-confirm/{token}")
+async def reset_account_password(
+    token: str,
+    passwords: PasswordResetConfirmModel,
+    session: AsyncSession = Depends(get_session),
+):
+    new_passie = passwords.new_password
+    confirm_new_passie = passwords.confirm_new_password
+
+    if new_passie != confirm_new_passie:
+        raise HTTPException(
+            detail={
+                "message": "Passwords do not match",
+            },
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    token_data = decode_url_safe_token(token)
+
+    user_email = token_data.get("email")
+
+    if user_email:
+        user = await user_service.get_user_by_email(user_email, session)
+        if not user:
+            raise UserNotFound()
+
+        password_hash = generate_password_hash(new_passie)
+        await user_service.update_user(user, {"password_hash": password_hash}, session)
+
+        return JSONResponse(
+            content={
+                "message": "Password reset successfully ",
+            },
+            status_code=status.HTTP_200_OK,
+        )
+
+    return JSONResponse(
+        content={
+            "message": "AN error occured while reseting your passowrd",
+        },
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
     )

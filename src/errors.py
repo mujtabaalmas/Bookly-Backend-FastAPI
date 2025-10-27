@@ -193,6 +193,17 @@ def register_all_errors(app: FastAPI):
             },
         ),
     )
+    app.add_exception_handler(
+        AccountNotVerified,
+        create_exception_handler(
+            status_code=status.HTTP_403_FORBIDDEN,
+            initial_detail={
+                "message": "Please Verify your account to continue",
+                "error_code": "account_not_verified",
+                "resolution": "Please check your email for verification",
+            },
+        ),
+    )
 
     @app.exception_handler(500)
     async def internal_server_error(request, exc):

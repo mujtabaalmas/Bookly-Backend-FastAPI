@@ -26,10 +26,12 @@ class UserModel(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class UserBooksModel(UserModel):
-    
+
     books: Optional[List[BookModel]]
     reviews: Optional[List[ReviewModel]]
+
 
 class UserloginModel(BaseModel):
     email: str = Field(max_length=40)
@@ -37,4 +39,13 @@ class UserloginModel(BaseModel):
 
 
 class EmailModel(BaseModel):
-    addresses : List[str]
+    addresses: List[str]
+
+
+class PasswordResetRequestModel(BaseModel):
+    email: str
+
+
+class PasswordResetConfirmModel(BaseModel):
+    new_password: str
+    confirm_new_password: str
