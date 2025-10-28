@@ -1,13 +1,18 @@
 from celery import Celery
-from src.mail import mail, create_message, send_verification_email,mail_config
+from src.mail import (
+    send_verification_email,
+    mail_config,
+    send_password_reset_email,
+)
 from asgiref.sync import async_to_sync
 from fastapi_mail import FastMail
 from pathlib import Path
+
 celery_app = Celery()
 
 celery_app.config_from_object("src.config")
 
-TEMPLATE_FOLDER=Path(__file__).parent / "templates"
+TEMPLATE_FOLDER = Path(__file__).parent / "templates"
 
 # verify_template = TEMPLATE_FOLDER / "verify_email.html"
 
@@ -20,11 +25,17 @@ TEMPLATE_FOLDER=Path(__file__).parent / "templates"
 
 fm = FastMail(mail_config)
 
+
 @celery_app.task()
 def send_templated_email_by_celery(email: str, username: str, verify_link: str):
     """Send a templated verification email by celery"""
-    message =  send_verification_email(
-        email, username, verify_link
-    )
-    
+    message = send_verification_email(email, username, verify_link)
+
     async_to_sync(fm.send_message)(message, template_name="verify_email.html")
+
+
+@celery_app.task()
+def send_password_reset_request_mail_by_celery(email: str, subject: str, body: str):
+    pass_email_message = send_password_reset_email(email, subject, body)
+
+    async_to_sync(fm.send_message)(pass_email_message)

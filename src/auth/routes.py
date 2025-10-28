@@ -38,7 +38,10 @@ from src.errors import (
     UserUsernameExists,
 )
 from src.mail import mail, create_message, send_verification_email
-from src.celery_tasks import send_templated_email_by_celery
+from src.celery_tasks import (
+    send_templated_email_by_celery,
+    send_password_reset_request_mail_by_celery,
+)
 
 auth_router = APIRouter()
 user_service = UserService()
@@ -245,11 +248,13 @@ async def password_reset_request(email_data: PasswordResetRequestModel):
         <h1>Reset your password</h1>
         <p>Click on this <a href="{Link}">Link</a> to Reset your Password</p>
     """
-    message = create_message(
-        recipients=[email], subject="Reset Your Password", body=html_message
-    )
+    subject = "Password Reset Link"
+    send_password_reset_request_mail_by_celery.delay(email, subject, html_message)
+    # message = create_message(
+    #     recipients=[email], subject="Reset Your Password", body=html_message
+    # )
 
-    await mail.send_message(message)
+    # await mail.send_message(message)
     return JSONResponse(
         content={
             "message": "Please check your email for password reset link",

@@ -2,6 +2,7 @@ from fastapi_mail import FastMail, ConnectionConfig, MessageSchema, MessageType
 from src.config import Config
 from pathlib import Path
 import datetime
+
 BASE_DIR = Path(__file__).resolve().parent
 
 
@@ -28,7 +29,10 @@ def create_message(recipients: list[str], subject: str, body: str):
     )
     return message
 
-def send_verification_email(email: str, username: str, verify_link: str)-> MessageSchema:
+
+def send_verification_email(
+    email: str, username: str, verify_link: str
+) -> MessageSchema:
     """Send a templated verification email"""
     return MessageSchema(
         subject="Verify Your Bookly Account",
@@ -36,9 +40,19 @@ def send_verification_email(email: str, username: str, verify_link: str)-> Messa
         template_body={
             "username": username,
             "verify_link": verify_link,
-            "year": datetime.datetime.now().year
+            "year": datetime.datetime.now().year,
         },
-        subtype=MessageType.html
+        subtype=MessageType.html,
     )
     # fm = FastMail(mail_config)
     # fm.send_message(message, template_name="verify_email.html")
+
+
+def send_password_reset_email(email: str, subject: str, body: str) -> MessageSchema:
+    """Send password reset email"""
+    return MessageSchema(
+        subject="Password Reset Link",
+        recipients=[email],
+        body=body,
+        subtype=MessageType.html,
+    )
