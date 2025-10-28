@@ -7,6 +7,8 @@ from fastapi import HTTPException, status
 from src.errors import (
     BookNotFound
 )
+from uuid import UUID
+
 
 class BookService:
     async def get_all_books(self, session: AsyncSession):
@@ -16,7 +18,7 @@ class BookService:
 
         return result.all()
 
-    async def get_user_books(self, user_uid: str, session: AsyncSession):
+    async def get_user_books(self, user_uid: UUID, session: AsyncSession):
 
         statement = (
             select(BookModel)
@@ -27,16 +29,26 @@ class BookService:
 
         return result.all()
 
-    async def get_book(self, book_uid: str, session: AsyncSession):
-
-        statement = select(BookModel).where(book_uid == BookModel.uid)
+    async def get_book(self, book_uid: UUID, session: AsyncSession):
+        # Ensure we compare the model column to the UUID value (column == value)
+        statement = select(BookModel).where(BookModel.uid == book_uid)
         result = await session.exec(statement)
-
         book = result.first()
         return book if book is not None else None
 
+    async def get_book_by_title_and_author(self, title: str, author: str, session: AsyncSession):
+        """Check if a book with the same title and author exists"""
+        title = title.strip().upper()
+        author = author.strip().upper()
+        statement = select(BookModel).where(
+            BookModel.title == title,
+            BookModel.author == author
+        )
+        result = await session.exec(statement)
+        return result.first()
+
     async def create_book(
-        self, book_data: BookCreateModel, user_uid: str, session: AsyncSession
+        self, book_data: BookCreateModel, user_uid: UUID, session: AsyncSession
     ):
 
         title = book_data.title.strip().upper()
@@ -73,7 +85,7 @@ class BookService:
         return new_book
 
     async def update_book(
-        self, book_uid: str, update_data: BookUpdateModel, session: AsyncSession
+        self, book_uid: UUID, update_data: BookUpdateModel, session: AsyncSession
     ):
 
         book_to_update = await self.get_book(book_uid, session)
@@ -89,17 +101,7 @@ class BookService:
         else:
             return None
 
-        # statement = select(BookModel).where(book_uid == book_uid)
-
-        # result = await session.exec(statement)
-        # data_to_be_updated = update_data.model_dump()
-        # update_data = BookModel(**data_to_be_updated)
-        # session.add(update_data)
-        # await session.commit()
-
-        # return update_data
-
-    async def delete_book(self, book_uid: str, session: AsyncSession):
+    async def delete_book(self, book_uid: UUID, session: AsyncSession):
 
         book_to_delete = await self.get_book(book_uid, session)
         if book_to_delete:

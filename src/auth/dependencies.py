@@ -32,14 +32,19 @@ class TokenBearer(HTTPBearer):
         super().__init__(auto_error=auto_error)
 
     async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
-        credentialie = await super().__call__(request)
+        try:
+            credentialie = await super().__call__(request)
+        except HTTPException as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated"
+            )
 
         if not credentialie or not credentialie.credentials:
-            raise InvalidToken()
-            # raise HTTPException(
-            #     status_code=status.HTTP_401_UNAUTHORIZED,
-            #     detail="Missing authentication token",
-            # )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated"
+            )
 
         token = credentialie.credentials
 

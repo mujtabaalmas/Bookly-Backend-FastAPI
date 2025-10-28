@@ -3,6 +3,7 @@ from fastapi import APIRouter, status, Header, HTTPException, Depends
 # from src.books.books_data import books
 from .schemas import BookModel, BookUpdateModel, BookCreateModel, BookDetailModel
 from typing import Optional, List
+from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.books.service import BookService
 from src.db.main import get_session
@@ -37,7 +38,17 @@ from src.errors import BookNotFound
 
 
 # ROUTER TO GET ALL BOOKS
-@book_router.get("/", response_model=List[BookModel], dependencies=[role_checker])
+@book_router.get(
+    "/",
+    response_model=List[BookModel],
+    dependencies=[role_checker],
+    responses={
+        200: {"description": "List of all books"},
+        400: {"description": "Bad Request - Invalid input"},
+        401: {"description": "Not authenticated"},
+        403: {"description": "Insufficient permissions"},
+    }
+)
 async def get_all_books(
     session: AsyncSession = Depends(get_session),
     token_details: dict = Depends(access_token_bearer),
@@ -48,21 +59,35 @@ async def get_all_books(
 
 # USER BOOK DETAILS
 @book_router.get(
-    "/user/{user_uid}", response_model=List[BookModel], dependencies=[role_checker]
+    "/user/{user_uid}", 
+    response_model=List[BookModel], 
+    dependencies=[role_checker],
+    responses={
+        200: {"description": "List of user's books"},
+        401: {"description": "Not authenticated"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "User or books not found"},
+        500: {"description": "Internal server error"}
+    }
 )
 async def get_user_book_submission(
-    user_uid: str,
+    user_uid: UUID,
     session: AsyncSession = Depends(get_session),
     token_details: dict = Depends(access_token_bearer),
 ):
-
-    books = await book_service.get_user_books(user_uid, session)
-    if not books:
+    try:
+        books = await book_service.get_user_books(user_uid, session)
+        if not books:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Books not found for user {user_uid}"
+            )
+        return books
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=(f"books not found for user {user_uid} !!!"),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
         )
-    return books
 
 
 # ROUTER TO CREATE BOOKS
@@ -71,6 +96,14 @@ async def get_user_book_submission(
     status_code=status.HTTP_201_CREATED,
     response_model=BookModel,
     dependencies=[role_checker],
+    responses={
+        201: {"description": "Book created successfully"},
+        400: {"description": "Book with same title and author already exists"},
+        401: {"description": "Not authenticated"},
+        403: {"description": "Insufficient permissions"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"}
+    }
 )
 async def create_books(
     book_data: BookCreateModel,
@@ -78,31 +111,68 @@ async def create_books(
     token_details: dict = Depends(access_token_bearer),
 ) -> dict:
     """Router to create new book instance"""
-    user_id = token_details.get("user")["user_uid"]
-    new_book = await book_service.create_book(book_data, user_id, session)
-    if not new_book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=(f"book not created !!!")
+    try:
+        user_id = token_details.get("user")["user_uid"]
+        
+        # Check if book with same title and author exists
+        existing_book = await book_service.get_book_by_title_and_author(
+            book_data.title, book_data.author, session
         )
-    return new_book
+        if existing_book:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Book with same title '{book_data.title}', and author '{book_data.author}' already exists. Cannot Create"
+            )
+            
+        new_book = await book_service.create_book(book_data, user_id, session)
+        if not new_book:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create book"
+            )
+        return new_book
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 
 # ROUTER TO GET BOOK BY ID
 @book_router.get(
-    "/{book_uid}", response_model=BookDetailModel, dependencies=[role_checker]
+    "/{book_uid}", 
+    response_model=BookDetailModel, 
+    dependencies=[role_checker],
+    responses={
+        200: {"description": "Book details retrieved successfully"},
+        401: {"description": "Not authenticated"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "Book not found"},
+        500: {"description": "Internal server error"}
+    }
 )
 async def get_book_by_id(
-    book_uid: str,
+    book_uid: UUID,
     session: AsyncSession = Depends(get_session),
     token_details: dict = Depends(access_token_bearer),
 ) -> dict:
-    """Router to get Book by books"""
-    book = await book_service.get_book(book_uid, session)
-    if book:
+    """Router to get Book by ID"""
+    try:
+        book = await book_service.get_book(book_uid, session)
+        if not book:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Book not found"
+            )
         return book
-    else:
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="book not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
         )
 
 
@@ -111,7 +181,7 @@ async def get_book_by_id(
     "/update/{book_uid}", response_model=BookModel, dependencies=[role_checker]
 )
 async def update_book(
-    book_uid: str,
+    book_uid: UUID,
     book_update_data: BookUpdateModel,
     session: AsyncSession = Depends(get_session),
     token_details: dict = Depends(access_token_bearer),
@@ -136,7 +206,7 @@ async def update_book(
     dependencies=[role_checker],
 )
 async def delete_book(
-    book_uid: str,
+    book_uid: UUID,
     session: AsyncSession = Depends(get_session),
     token_details: dict = Depends(access_token_bearer),
 ):

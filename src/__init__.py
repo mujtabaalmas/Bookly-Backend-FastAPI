@@ -21,9 +21,14 @@ api_key = "api"
 api = api_key
 
 app = FastAPI(
-    title="Brookly App",
+    title="Book Management Service",
     description="A Rest Api for book review web service",
     version=version,
+    docs_url= f'/api/{version}/docs',
+    redoc_url=f'/api/{version}/redoc',
+    contact={
+        "email": "mujtabaalmas7@gmail.com",
+    }
 )
 
 register_all_errors(app)

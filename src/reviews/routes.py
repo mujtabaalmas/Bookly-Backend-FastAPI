@@ -5,6 +5,7 @@ from src.auth.dependencies import get_current_user
 from sqlmodel.ext.asyncio.session import AsyncSession
 from .schemas import ReviewCreateModel, ReviewModel
 from .service import ReviewService
+from uuid import UUID
 
 review_service = ReviewService()
 review_router = APIRouter()
@@ -12,7 +13,7 @@ review_router = APIRouter()
 
 @review_router.post("/{book_uid}")
 async def add_review_to_books(
-    book_uid: str,
+    book_uid: UUID,
     review_data: ReviewCreateModel,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),

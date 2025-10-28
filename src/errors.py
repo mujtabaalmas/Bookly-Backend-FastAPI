@@ -99,7 +99,7 @@ def register_all_errors(app: FastAPI):
     app.add_exception_handler(
         UserAlreadyExists,
         create_exception_handler(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_409_CONFLICT,
             initial_detail={
                 "message": "User with email already exists",
                 "error_code": "user_exists",
@@ -119,7 +119,7 @@ def register_all_errors(app: FastAPI):
     app.add_exception_handler(
         UserUsernameExists,
         create_exception_handler(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_409_CONFLICT,
             initial_detail={
                 "message": "Account already exists with username",
                 "error_code": "user_exists",

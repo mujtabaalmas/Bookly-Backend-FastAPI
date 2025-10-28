@@ -5,6 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import HTTPException, status
 from .schemas import ReviewCreateModel
 from sqlmodel import select, desc
+from uuid import UUID
 import datetime
 import logging
 
@@ -17,7 +18,7 @@ class ReviewService:
     async def add_review_to_book(
         self,
         user_email: str,
-        book_uid: str,
+        book_uid: UUID,
         review_data: ReviewCreateModel,
         session: AsyncSession,
     ):

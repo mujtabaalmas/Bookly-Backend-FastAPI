@@ -64,7 +64,15 @@ REFRESH_TOKEN_EXPIRY = 1
 #     return {"message": "Email sent successfully"}
 
 
-@auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
+@auth_router.post(
+    "/signup", 
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        201: {"description": "User created successfully"},
+        409: {"description": "User already exists"},
+        422: {"description": "Validation error"},
+    }
+)
 async def create_user_Account(
     user_data: UserCreateModel,
     bg_tasks: BackgroundTasks,
@@ -128,10 +136,52 @@ async def create_user_Account(
     # return new_user
 
 
-@auth_router.get("/verify/{token}")
+@auth_router.get(
+    "/verify/{token}",
+    responses={
+        200: {"description": "Account verified successfully"},
+        404: {"description": "User not found"},
+        422: {"description": "Invalid token"},
+        500: {"description": "Server error"}
+    }
+)
 async def verify_user_account(token: str, session: AsyncSession = Depends(get_session)):
+    try:
+        token_data = decode_url_safe_token(token)
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid verification token"
+            )
+        
+        user_email = token_data.get("email")
+        if not user_email:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid token format"
+            )
 
-    token_data = decode_url_safe_token(token)
+        user = await user_service.get_user_by_email(user_email, session)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        if not user.is_verified:
+            user.is_verified = True
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+            
+        return {"message": "Account verified successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
     user_email = token_data.get("email")
 
     if user_email:
@@ -158,7 +208,14 @@ async def verify_user_account(token: str, session: AsyncSession = Depends(get_se
     )
 
 
-@auth_router.post("/login")
+@auth_router.post(
+    "/login",
+    responses={
+        200: {"description": "Login successful"},
+        401: {"description": "Invalid email or password"},
+        422: {"description": "Validation error"},
+    }
+)
 async def login_users(
     user_login_data: UserloginModel, session: AsyncSession = Depends(get_session)
 ):
@@ -203,7 +260,13 @@ async def login_users(
     # )
 
 
-@auth_router.get("/refresh_token")
+@auth_router.get(
+    "/refresh_token",
+    responses={
+        200: {"description": "Token refreshed successfully"},
+        401: {"description": "Not authenticated"},
+    }
+)
 async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer())):
     expiry_timestamp = token_details["exp"]
     if datetime.fromtimestamp(expiry_timestamp) > datetime.now():
@@ -263,27 +326,59 @@ async def password_reset_request(email_data: PasswordResetRequestModel):
     )
 
 
-@auth_router.post("/password-reset-confirm/{token}")
+@auth_router.post(
+    "/password-reset-confirm/{token}",
+    responses={
+        200: {"description": "Password reset successful"},
+        400: {"description": "Passwords do not match"},
+        404: {"description": "User not found"},
+        422: {"description": "Invalid token or validation error"},
+        500: {"description": "Internal server error"}
+    }
+)
 async def reset_account_password(
     token: str,
     passwords: PasswordResetConfirmModel,
     session: AsyncSession = Depends(get_session),
 ):
-    new_passie = passwords.new_password
-    confirm_new_passie = passwords.confirm_new_password
+    try:
+        new_passie = passwords.new_password
+        confirm_new_passie = passwords.confirm_new_password
 
-    if new_passie != confirm_new_passie:
+        if new_passie != confirm_new_passie:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Passwords do not match"
+            )
+
+        token_data = decode_url_safe_token(token)
+        if not token_data or "email" not in token_data:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid or expired token"
+            )
+
+        user = await user_service.get_user_by_email(token_data["email"], session)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # Update password
+        hashed_password = generate_password_hash(new_passie)
+        user.password = hashed_password
+        session.add(user)
+        await session.commit()
+
+        return {"message": "Password reset successful"}
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
-            detail={
-                "message": "Passwords do not match",
-            },
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
         )
-    token_data = decode_url_safe_token(token)
-
-    user_email = token_data.get("email")
-
-    if user_email:
         user = await user_service.get_user_by_email(user_email, session)
         if not user:
             raise UserNotFound()
