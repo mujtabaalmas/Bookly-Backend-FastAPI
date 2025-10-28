@@ -16,6 +16,12 @@ class UserService:
         user = result.first()
         return user
 
+    async def get_user_by_username(self, username: str, session: AsyncSession):
+
+        statement = select(User).where(User.username == username)
+        result = await session.exec(statement)
+        user = result.first()
+        return True if user is not None else False
     async def user_exists(self, email, session: AsyncSession):
 
         user = await self.get_user_by_email(email, session)
@@ -54,10 +60,10 @@ class UserService:
             return user
 
     async def update_user(self, user: User, user_data: dict, session: AsyncSession):
-        
+
         for k, v in user_data.items():
             setattr(user, k, v)
 
         await session.commit()
-        
+
         return user

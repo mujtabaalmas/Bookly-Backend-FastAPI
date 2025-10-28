@@ -35,6 +35,7 @@ from src.errors import (
     UserAlreadyExists,
     InvalidCredentials,
     UserNotFound,
+    UserUsernameExists,
 )
 from src.mail import mail, create_message, send_verification_email
 from src.celery_tasks import send_templated_email_by_celery
@@ -49,7 +50,7 @@ REFRESH_TOKEN_EXPIRY = 1
 # @auth_router.post("/send_mail")
 # async def send_mail(emails: EmailModel):
 #     emails = emails.addresses
-#     html = """<h1>testing </h1> 
+#     html = """<h1>testing </h1>
 #             <h2>Email sent from FastAPI API testing only</h2>"""
 #     # message = create_message(recipients=emails, subject="Welcome", body=html)
 
@@ -66,10 +67,16 @@ async def create_user_Account(
     bg_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
 ):
+
+    user_username = user_data.username
+    user_username_exists = await user_service.get_user_by_username(
+        user_username, session
+    )
+    if user_username_exists:
+        raise UserUsernameExists()
+
     email = user_data.email
-
     User_exists = await user_service.user_exists(email, session)
-
     if User_exists:
         raise UserAlreadyExists()
 
@@ -78,17 +85,17 @@ async def create_user_Account(
     Link = f"http://{Config.DOMAIN}/api/v1/auth/verify/{token}"
 
     # send templated email with celery
-    #  
-    send_templated_email_by_celery.delay(email, user_data.username, Link)  
+    #
+    send_templated_email_by_celery.delay(email, user_data.username, Link)
 
-    # send templated email with background tasks enabled 
-    
+    # send templated email with background tasks enabled
+
     # send_verification_email.delay(email=email, username=user_data.username, verify_link=Link)
     # Send templated email
-    #bg_tasks.add_task(send_verification_email, email, user_data.username, Link)
+    # bg_tasks.add_task(send_verification_email, email, user_data.username, Link)
     # send_verification_email.delay(send_verification_email, email, user_data.username, Link)
 
-    # html = """<h1>testing </h1> 
+    # html = """<h1>testing </h1>
     #         <h2>Email sent from FastAPI API testing only</h2>"""
     # emails = [email]
     # subject = "Verify Your Email"

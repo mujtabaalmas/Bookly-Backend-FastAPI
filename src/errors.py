@@ -81,7 +81,9 @@ class AccountNotVerified(Exception):
 
     pass
 
-
+class UserUsernameExists(Exception):
+    """Username already exists"""
+    pass
 def create_exception_handler(
     status_code: int, initial_detail: Any
 ) -> Callable[[Request, Exception], JSONResponse]:
@@ -111,6 +113,16 @@ def register_all_errors(app: FastAPI):
             initial_detail={
                 "message": "Invalid Email or Password ",
                 "error_code": "invalid_email_or_password",
+            },
+        ),
+    )
+    app.add_exception_handler(
+        UserUsernameExists,
+        create_exception_handler(
+            status_code=status.HTTP_403_FORBIDDEN,
+            initial_detail={
+                "message": "Account already exists with username",
+                "error_code": "user_exists",
             },
         ),
     )
