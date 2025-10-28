@@ -28,9 +28,9 @@ def create_message(recipients: list[str], subject: str, body: str):
     )
     return message
 
-async def send_verification_email(email: str, username: str, verify_link: str):
+def send_verification_email(email: str, username: str, verify_link: str)-> MessageSchema:
     """Send a templated verification email"""
-    message = MessageSchema(
+    return MessageSchema(
         subject="Verify Your Bookly Account",
         recipients=[email],
         template_body={
@@ -40,5 +40,5 @@ async def send_verification_email(email: str, username: str, verify_link: str):
         },
         subtype=MessageType.html
     )
-    fm = FastMail(mail_config)
-    await fm.send_message(message, template_name="verify_email.html")
+    # fm = FastMail(mail_config)
+    # fm.send_message(message, template_name="verify_email.html")

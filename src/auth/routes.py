@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from .schemas import (
     UserCreateModel,
     UserModel,
@@ -37,6 +37,7 @@ from src.errors import (
     UserNotFound,
 )
 from src.mail import mail, create_message, send_verification_email
+from src.celery_tasks import send_templated_email_by_celery
 
 auth_router = APIRouter()
 user_service = UserService()
@@ -45,21 +46,25 @@ role_checker = RoleChecker(["admin", "user"])
 REFRESH_TOKEN_EXPIRY = 1
 
 
-@auth_router.post("/send_mail")
-async def send_mail(emails: EmailModel):
-    emails = emails.addresses
-    html = """<h1>welcome to the app bookly</h1> 
-            <h2>Email sent from FastAPI API testing only</h2>"""
-    message = create_message(recipients=emails, subject="Welcome", body=html)
+# @auth_router.post("/send_mail")
+# async def send_mail(emails: EmailModel):
+#     emails = emails.addresses
+#     html = """<h1>testing </h1> 
+#             <h2>Email sent from FastAPI API testing only</h2>"""
+#     # message = create_message(recipients=emails, subject="Welcome", body=html)
 
-    await mail.send_message(message)
+#     # await mail.send_message(message)
+#     subject = "welcome to the app"
+#     send_email.delay(emails, subject, html)
 
-    return {"message": "Email sent successfully"}
+#     return {"message": "Email sent successfully"}
 
 
 @auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def create_user_Account(
-    user_data: UserCreateModel, session: AsyncSession = Depends(get_session)
+    user_data: UserCreateModel,
+    bg_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_session),
 ):
     email = user_data.email
 
@@ -72,10 +77,22 @@ async def create_user_Account(
     token = create_url_safe_token({"email": email})
     Link = f"http://{Config.DOMAIN}/api/v1/auth/verify/{token}"
 
+    # send templated email with celery
+    #  
+    send_templated_email_by_celery.delay(email, user_data.username, Link)  
+
+    # send templated email with background tasks enabled 
+    
+    # send_verification_email.delay(email=email, username=user_data.username, verify_link=Link)
     # Send templated email
-    await send_verification_email(
-        email=email, username=user_data.username, verify_link=Link
-    )
+    #bg_tasks.add_task(send_verification_email, email, user_data.username, Link)
+    # send_verification_email.delay(send_verification_email, email, user_data.username, Link)
+
+    # html = """<h1>testing </h1> 
+    #         <h2>Email sent from FastAPI API testing only</h2>"""
+    # emails = [email]
+    # subject = "Verify Your Email"
+    # send_email.delay(emails, subject, html)
 
     return {
         "message": "Account Created Successfully! Check your email to verify your account.",
@@ -112,11 +129,17 @@ async def verify_user_account(token: str, session: AsyncSession = Depends(get_se
 
         if not user:
             raise UserNotFound()
-        await user_service.update_user(user, {"is_verified": True}, session)
 
-        return JSONResponse(
-            content={"message": "Account Verified succesfully"},
-            status_code=status.HTTP_200_OK,
+        if not user.is_verified:
+
+            await user_service.update_user(user, {"is_verified": True}, session)
+
+            return JSONResponse(
+                content={"message": "Account Verified succesfully"},
+                status_code=status.HTTP_200_OK,
+            )
+        raise HTTPException(
+            status_code=400, detail=f"User {user_email} is already Verified"
         )
 
     return JSONResponse(
