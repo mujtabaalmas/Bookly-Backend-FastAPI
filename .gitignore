@@ -14,3 +14,5 @@ wheels/
 
 # Hypothesis test database
 .hypothesis/
+
+.pytest_cache/
