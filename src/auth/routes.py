@@ -65,13 +65,13 @@ REFRESH_TOKEN_EXPIRY = 1
 
 
 @auth_router.post(
-    "/signup", 
+    "/signup",
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {"description": "User created successfully"},
         409: {"description": "User already exists"},
         422: {"description": "Validation error"},
-    }
+    },
 )
 async def create_user_Account(
     user_data: UserCreateModel,
@@ -142,8 +142,8 @@ async def create_user_Account(
         200: {"description": "Account verified successfully"},
         404: {"description": "User not found"},
         422: {"description": "Invalid token"},
-        500: {"description": "Server error"}
-    }
+        500: {"description": "Server error"},
+    },
 )
 async def verify_user_account(token: str, session: AsyncSession = Depends(get_session)):
     try:
@@ -151,21 +151,20 @@ async def verify_user_account(token: str, session: AsyncSession = Depends(get_se
         if not token_data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Invalid verification token"
+                detail="Invalid verification token",
             )
-        
+
         user_email = token_data.get("email")
         if not user_email:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Invalid token format"
+                detail="Invalid token format",
             )
 
         user = await user_service.get_user_by_email(user_email, session)
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
         if not user.is_verified:
@@ -173,14 +172,13 @@ async def verify_user_account(token: str, session: AsyncSession = Depends(get_se
             session.add(user)
             await session.commit()
             await session.refresh(user)
-            
+
         return {"message": "Account verified successfully"}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
     user_email = token_data.get("email")
 
@@ -214,7 +212,7 @@ async def verify_user_account(token: str, session: AsyncSession = Depends(get_se
         200: {"description": "Login successful"},
         401: {"description": "Invalid email or password"},
         422: {"description": "Validation error"},
-    }
+    },
 )
 async def login_users(
     user_login_data: UserloginModel, session: AsyncSession = Depends(get_session)
@@ -265,7 +263,8 @@ async def login_users(
     responses={
         200: {"description": "Token refreshed successfully"},
         401: {"description": "Not authenticated"},
-    }
+        403: {"description": "Refresh token required or invalid"},
+    },
 )
 async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer())):
     expiry_timestamp = token_details["exp"]
@@ -279,7 +278,15 @@ async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer(
     # )
 
 
-@auth_router.get("/me", response_model=UserBooksModel)
+@auth_router.get(
+    "/me",
+    response_model=UserBooksModel,
+    responses={
+        200: {"description": "Current user retrieved"},
+        401: {"description": "Not authenticated"},
+        403: {"description": "Insufficient permissions"},
+    },
+)
 async def get_current_user(
     user=Depends(get_current_user), _: bool = Depends(role_checker)
 ):
@@ -288,7 +295,13 @@ async def get_current_user(
     return user
 
 
-@auth_router.get("/logout")
+@auth_router.get(
+    "/logout",
+    responses={
+        200: {"description": "Logout successful"},
+        401: {"description": "Not authenticated"},
+    },
+)
 async def revoke_token(token_details: dict = Depends(AccessTokenBearer())):
 
     jti = token_details["jti"]
@@ -301,8 +314,11 @@ async def revoke_token(token_details: dict = Depends(AccessTokenBearer())):
 
 
 @auth_router.post("/password-reset-request")
-async def password_reset_request(email_data: PasswordResetRequestModel):
-
+async def password_reset_request(email_data: PasswordResetRequestModel, user=Depends(get_current_user)):
+    
+    if not user:
+        raise UserNotFound()
+    
     email = email_data.email
     token = create_url_safe_token({"email": email})
     Link = f"http://{Config.DOMAIN}/api/v1/auth/password-reset-confirm/{token}"
@@ -333,8 +349,8 @@ async def password_reset_request(email_data: PasswordResetRequestModel):
         400: {"description": "Passwords do not match"},
         404: {"description": "User not found"},
         422: {"description": "Invalid token or validation error"},
-        500: {"description": "Internal server error"}
-    }
+        500: {"description": "Internal server error"},
+    },
 )
 async def reset_account_password(
     token: str,
@@ -347,27 +363,25 @@ async def reset_account_password(
 
         if new_passie != confirm_new_passie:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Passwords do not match"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match"
             )
 
         token_data = decode_url_safe_token(token)
         if not token_data or "email" not in token_data:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Invalid or expired token"
+                detail="Invalid or expired token",
             )
 
         user = await user_service.get_user_by_email(token_data["email"], session)
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
         # Update password
         hashed_password = generate_password_hash(new_passie)
-        user.password = hashed_password
+        user.password_hash = hashed_password
         session.add(user)
         await session.commit()
 
@@ -376,8 +390,7 @@ async def reset_account_password(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
         user = await user_service.get_user_by_email(user_email, session)
         if not user:

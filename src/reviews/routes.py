@@ -11,7 +11,17 @@ review_service = ReviewService()
 review_router = APIRouter()
 
 
-@review_router.post("/{book_uid}")
+@review_router.post(
+    "/{book_uid}",
+    responses={
+        200: {"description": "Review added successfully"},
+        401: {"description": "Not authenticated"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "Book not found"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
+)
 async def add_review_to_books(
     book_uid: UUID,
     review_data: ReviewCreateModel,

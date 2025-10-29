@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr, constr
 from src.books.schemas import BookModel
 from src.reviews.schemas import ReviewModel
 from datetime import datetime, date
@@ -7,11 +7,11 @@ import uuid
 
 
 class UserCreateModel(BaseModel):
-    first_name: str = Field(max_length=25)
-    last_name: str = Field(max_length=25)
-    username: str = Field(max_length=8)
-    email: str = Field(max_length=40)
-    password: str = Field(min_length=8)
+    first_name: constr(min_length=1, max_length=25)
+    last_name: constr(min_length=1, max_length=25)
+    username: constr(min_length=3, max_length=8)
+    email: EmailStr
+    password: constr(min_length=8)
 
 
 class UserModel(BaseModel):

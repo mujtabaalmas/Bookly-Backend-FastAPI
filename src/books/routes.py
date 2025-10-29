@@ -80,9 +80,11 @@ async def get_user_book_submission(
         if not books:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Books not found for user {user_uid}"
+                detail="No books found for this user"
             )
         return books
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -140,6 +142,15 @@ async def create_books(
         )
 
 
+# Explicitly return 405 for unsupported GET on "/create" to avoid UUID route conflict
+@book_router.get("/create")
+async def create_books_method_not_allowed():
+    raise HTTPException(
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        detail="Method Not Allowed"
+    )
+
+
 # ROUTER TO GET BOOK BY ID
 @book_router.get(
     "/{book_uid}", 
@@ -178,7 +189,17 @@ async def get_book_by_id(
 
 # ROUTER TO UPDATE BOOK
 @book_router.patch(
-    "/update/{book_uid}", response_model=BookModel, dependencies=[role_checker]
+    "/update/{book_uid}",
+    response_model=BookModel,
+    dependencies=[role_checker],
+    responses={
+        200: {"description": "Book updated successfully"},
+        401: {"description": "Not authenticated"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "Book not found"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def update_book(
     book_uid: UUID,
@@ -204,6 +225,14 @@ async def update_book(
     "/delete/{book_uid}",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[role_checker],
+    responses={
+        204: {"description": "Book deleted successfully"},
+        401: {"description": "Not authenticated"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "Book not found"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
 )
 async def delete_book(
     book_uid: UUID,
@@ -213,12 +242,7 @@ async def delete_book(
     """
     ROUTER TO DELETE EXISTING BOOK BY BOOK ID
     """
-    book_to_delete = await book_service.delete_book(book_uid, session)
-    if book_to_delete:
+    result = await book_service.delete_book(book_uid, session)
+    if isinstance(result, dict) and result.get("message") == "book not found":
         raise BookNotFound()
-        # raise HTTPException(
-        #     status_code=status.HTTP_404_NOT_FOUND,
-        #     detail="book id not found Unable to delete ",
-        # )
-    else:
-        return {}
+    return {}
