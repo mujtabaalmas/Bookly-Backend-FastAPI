@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
+from dotenv import load_dotenv
+load_dotenv()
+import os
 
 class Settings(BaseSettings):
     DATABASE_URL: str
@@ -24,5 +26,5 @@ class Settings(BaseSettings):
 
 Config = Settings()
 
-broker_url = Config.REDIS_URL
-result_backend = Config.REDIS_URL
+broker_url = os.getenv("REDIS_URL")
+result_backend = os.getenv("REDIS_URL")

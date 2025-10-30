@@ -1,9 +1,12 @@
 import redis.asyncio as redis
 from src.config import Config
+from dotenv import load_dotenv
+load_dotenv()
+import os
 
 JTI_EXPIRY_TIME = 3600
 
-token_block_list = redis.from_url(Config.REDIS_URL)
+token_block_list = redis.from_url(os.getenv("REDIS_URL"))
 # Redis(host=Config.REDIS_HOST, port=Config.REDIS_PORT, db=0
 # )
 

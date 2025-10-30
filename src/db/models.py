@@ -13,10 +13,10 @@ class User(SQLModel, table=True):
         sa_column=Column(pg.UUID, nullable=False, primary_key=True, default=uuid.uuid4)
     )
 
-    username: str = Field(sa_column=Column(pg.String(100),unique=True, nullable=False))
+    username: str = Field(sa_column=Column(pg.String(100),index=True,unique=True, nullable=False))
     password_hash: str = Field(exclude=True)
 
-    email: str = Field(sa_column=Column(pg.String(100), nullable=False))
+    email: str = Field(sa_column=Column(pg.String(100),index=True, nullable=False))
 
     first_name: str = Field(sa_column=Column(pg.String(100), nullable=False))
     last_name: str = Field(sa_column=Column(pg.String(100), nullable=False))

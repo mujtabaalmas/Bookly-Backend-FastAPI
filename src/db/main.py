@@ -37,13 +37,22 @@
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from src.config import Config
+#from src.config import Config
+from dotenv import load_dotenv
+load_dotenv()
+import os
 
 
-#  Create proper async engine
-engine = create_async_engine(
-    Config.DATABASE_URL  # e.g., "postgresql+asyncpg://user:pass@localhost/dbname"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError(" DATABASE_URL is not set. Check your .env or Railway variables.")
+engine = create_async_engine(DATABASE_URL)
+
+
+# #  Create proper async engine
+# engine = create_async_engine(
+#     Config.DATABASE_URL  # e.g., "postgresql+asyncpg://user:pass@localhost/dbname"
+# )
 
 
 #  Create async session factory
