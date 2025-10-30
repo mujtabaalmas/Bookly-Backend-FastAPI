@@ -13,9 +13,10 @@ ACCESS_TOKEN_EXPIRY = 3600
 
 def generate_password_hash(password: str) -> str:
 
-    if len(password.encode("utf-8")) > 72:
-        raise ValueError("Password too long — must be under 72 characters.")
-    return password_context.hash(password)
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]  
+    return password_context.hash(password_bytes)
 
 
 def verify_password(password: str, hash: str) -> bool:
